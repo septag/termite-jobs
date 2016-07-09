@@ -1,6 +1,4 @@
-#include "pch.h"
-
-#include "job_dispatcher.h"
+#include "termite_jobs.h"
 
 #include "bx/cpu.h"
 #include "bx/thread.h"
@@ -8,7 +6,6 @@
 #include "bx/string.h"
 #include "bxx/pool.h"
 #include "bxx/stack.h"
-#include "bxx/logger.h"
 #include "bxx/linked_list.h"
 #include "bxx/lock.h"
 
@@ -349,7 +346,6 @@ static JobHandle dispatch(const jobDesc* jobs, uint16_t numJobs, FiberPool* pool
     JobCounter* counter = &g_dispatcher->counterPool.newInstance()->counter;
     g_dispatcher->counterLock.unlock();
     if (!counter) {
-        BX_WARN("Exceeded maximum counters");
         return nullptr;
     }
     *counter = numJobs;
@@ -368,7 +364,7 @@ static JobHandle dispatch(const jobDesc* jobs, uint16_t numJobs, FiberPool* pool
             bx::addListNode<Fiber*>(&g_dispatcher->waitList[int(fiber->priority)], &fiber->lnode, fiber);
             c++;
         } else {
-            BX_WARN("Exceeded maximum jobs (%d)", pool->getMax());
+            assert(false);  // Exceeded maximum jobs
         }
     }
     g_dispatcher->jobLock.unlock();
@@ -451,29 +447,29 @@ static int32_t threadFunc(void* userData)
     return 0;
 }
 
-result_t termite::initJobDispatcher(bx::AllocatorI* alloc,
+int termite::initJobDispatcher(bx::AllocatorI* alloc,
                           uint16_t maxSmallFibers, uint32_t smallFiberStackSize,
                           uint16_t maxBigFibers, uint32_t bigFiberStackSize,
                           bool lockThreadsToCores, uint8_t numWorkerThreads)
 {
     if (g_dispatcher) {
         assert(false);
-        return T_ERR_FAILED;
+        return -1;
     }
     g_dispatcher = BX_NEW(alloc, JobDispatcher);
     if (!g_dispatcher)
-        return T_ERR_OUTOFMEM;
+        return -1;
     g_dispatcher->alloc = alloc;
 
     // Main thread data and stack
     g_dispatcher->mainStack = create_fcontext_stack(8 * 1024);
     if (!g_dispatcher->mainStack.sptr) {
-        return T_ERR_FAILED;
+        return -1;
     }
 
     ThreadData* mainData = createThreadData(alloc, bx::getTid(), true);
     if (!mainData)
-        return T_ERR_FAILED;
+        return -1;
     g_dispatcher->threadData.set(mainData);
 
     // Create fibers with stack memories
@@ -483,22 +479,16 @@ result_t termite::initJobDispatcher(bx::AllocatorI* alloc,
     bigFiberStackSize = bigFiberStackSize ? bigFiberStackSize : DEFAULT_BIG_STACKSIZE;
 
     if (!g_dispatcher->counterPool.create(maxSmallFibers + maxBigFibers, alloc)) {
-        return T_ERR_OUTOFMEM;
+        return -1;
     }
 
-    BX_BEGINP("Creating %d fibers with %d(kb) stack", maxBigFibers, bigFiberStackSize/1024);
     if (!g_dispatcher->bigFibers.create(maxBigFibers, bigFiberStackSize, alloc)) {
-        BX_END_FATAL();
-        return T_ERR_FAILED;
+        return -1;
     }
-    BX_END_OK();
 
-    BX_BEGINP("Creating %d fibers with %d(kb) stack", maxSmallFibers, smallFiberStackSize/1024);
     if (!g_dispatcher->smallFibers.create(maxSmallFibers, smallFiberStackSize, alloc)) {
-        BX_END_FATAL();
-        return T_ERR_FAILED;
+        return -1;
     }
-    BX_END_OK();
 
     // Create threads
     if (numWorkerThreads == UINT8_MAX) {
@@ -507,7 +497,6 @@ result_t termite::initJobDispatcher(bx::AllocatorI* alloc,
     }
 
     if (numWorkerThreads > 0) {
-        BX_BEGINP("Starting %d worker threads", numWorkerThreads);
         g_dispatcher->threads = (bx::Thread**)BX_ALLOC(alloc, sizeof(bx::Thread*)*numWorkerThreads);
         assert(g_dispatcher->threads);
         
@@ -519,7 +508,6 @@ result_t termite::initJobDispatcher(bx::AllocatorI* alloc,
             g_dispatcher->threads[i]->init(threadFunc, nullptr, 8 * 1024, name);
         }
 
-        BX_END_OK();
     }
     return 0;
 }
@@ -528,8 +516,6 @@ void termite::shutdownJobDispatcher()
 {
     if (!g_dispatcher)
         return;
-
-    BX_BEGINP("Shutting down Job Dispatcher");
 
     // Command all worker threads to stop
     g_dispatcher->stop = 1;
@@ -554,5 +540,4 @@ void termite::shutdownJobDispatcher()
 
     BX_DELETE(g_dispatcher->alloc, g_dispatcher);
     g_dispatcher = nullptr;
-    BX_END_OK();
 }
