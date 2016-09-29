@@ -16,7 +16,7 @@ if (NOT EXISTS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 endif()
 
 if (CMAKE_CONFIGURATION_TYPES)
-    set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Profile;Development" CACHE STRING "" FORCE)
+    set(CMAKE_CONFIGURATION_TYPES "Debug;Release;" CACHE STRING "" FORCE)
 endif()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -41,10 +41,6 @@ if(MSVC)
 else()
     add_compile_options(-std=c++11 -fPIC -fno-rtti -fno-exceptions -Wno-switch)
 endif()
-
-# copy release flags into profile
-copy_build_flags(PROFILE)
-copy_build_flags(DEVELOPMENT)
 
 # http://stackoverflow.com/questions/33829152/for-cmake-can-you-modify-the-release-debug-compiler-flags-with-add-compiler-fl
 set(DEBUG_COMPILE_OPTIONS "-DBX_CONFIG_ALLOCATOR_DEBUG")

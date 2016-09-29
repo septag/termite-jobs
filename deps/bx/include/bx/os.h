@@ -16,6 +16,7 @@
 #elif  BX_PLATFORM_ANDROID \
 	|| BX_PLATFORM_EMSCRIPTEN \
 	|| BX_PLATFORM_BSD \
+	|| BX_PLATFORM_HURD \
 	|| BX_PLATFORM_IOS \
 	|| BX_PLATFORM_LINUX \
 	|| BX_PLATFORM_NACL \
@@ -51,16 +52,18 @@
 #		include <sys/syscall.h>
 #	elif BX_PLATFORM_OSX
 #		include <mach/mach.h> // mach_task_basic_info
+#	elif BX_PLATFORM_HURD
+#		include <unistd.h> // getpid
 #	elif BX_PLATFORM_ANDROID
 #		include "debug.h" // getTid is not implemented...
 #	endif // BX_PLATFORM_ANDROID
 #endif // BX_PLATFORM_
 
-#if BX_COMPILER_MSVC_COMPATIBLE
+#if BX_CRT_MSVC
 #	include <direct.h> // _getcwd
 #else
 #	include <unistd.h> // getcwd
-#endif // BX_COMPILER_MSVC
+#endif // BX_CRT_MSVC
 
 #if BX_PLATFORM_OSX
 #	define BX_DL_EXT "dylib"
@@ -110,6 +113,8 @@ namespace bx
 #elif BX_PLATFORM_BSD || BX_PLATFORM_NACL
 		// Casting __nc_basic_thread_data*... need better way to do this.
 		return *(uint32_t*)::pthread_self();
+#elif BX_PLATFORM_HURD
+		return (pthread_t)::pthread_self();
 #else
 //#	pragma message "not implemented."
 		debugOutput("getTid is not implemented"); debugBreak();
@@ -122,7 +127,7 @@ namespace bx
 #if BX_PLATFORM_ANDROID
 		struct mallinfo mi = mallinfo();
 		return mi.uordblks;
-#elif BX_PLATFORM_LINUX
+#elif BX_PLATFORM_LINUX || BX_PLATFORM_HURD
 		FILE* file = fopen("/proc/self/statm", "r");
 		if (NULL == file)
 		{
@@ -254,7 +259,7 @@ namespace bx
  || BX_PLATFORM_WINRT
 		BX_UNUSED(_path);
 		return -1;
-#elif BX_COMPILER_MSVC_COMPATIBLE
+#elif BX_CRT_MSVC
 		return ::_chdir(_path);
 #else
 		return ::chdir(_path);
@@ -268,7 +273,7 @@ namespace bx
  || BX_PLATFORM_WINRT
 		BX_UNUSED(_buffer, _size);
 		return NULL;
-#elif BX_COMPILER_MSVC_COMPATIBLE
+#elif BX_CRT_MSVC
 		return ::_getcwd(_buffer, (int)_size);
 #else
 		return ::getcwd(_buffer, _size);

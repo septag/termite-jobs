@@ -1,5 +1,5 @@
-// Original Author: Ali Salehi
-// Modifications and bx adaptation: septag
+// Original Author: Ali Salehi - https://github.com/lordhippo
+// Adapted for BX by septag
 #pragma once
 
 #include "bx/bx.h"
@@ -29,9 +29,20 @@ namespace bx
 
         void* getData(int bufferIdx);
         void* getHandleData(int bufferIdx, uint16_t handle);
-        uint16_t getCount()
+        uint16_t getCount() const
         {
             return m_partition;
+        }
+
+		const uint16_t* getIndices() const
+		{
+			return m_indices;
+		}
+
+        uint16_t indexAt(uint16_t index) const
+        {
+            assert(index < m_partition);
+            return m_indices[index];
         }
 
         template<typename _T>
