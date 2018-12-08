@@ -1,5 +1,5 @@
 # NOTE
-*This library is obsolete and may contain bugs. For maintained version checkout [sx](https://github.com/septag/sx)
+*This library is obsolete and may contain bugs. For maintained version checkout [sx](https://github.com/septag/sx) library.* until I rip it from there and make a single-header termite-jobs library
 
 # termite-jobs
 Fast, multiplatform fiber based job dispatcher based on Naughty Dogs' GDC2015 talk.
