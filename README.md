@@ -1,3 +1,6 @@
+# NOTE
+*This library is obsolete and may contain bugs. For maintained version checkout [sx](https://github.com/septag/sx)
+
 # termite-jobs
 Fast, multiplatform fiber based job dispatcher based on Naughty Dogs' GDC2015 talk.
 
